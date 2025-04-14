@@ -1,0 +1,12 @@
+{
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}"
+    ],
+    "python.defaultInterpreterPath": "C:/Users/m/.conda/envs/option_dash/python.exe"
+}

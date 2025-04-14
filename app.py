@@ -1,0 +1,52 @@
+import dash
+from dash import Dash, dcc, html, Input, Output, State, callback, ctx, no_update
+import dash_bootstrap_components as dbc
+from components import input_groups, op_submit_btn, get_chart
+from functions import bs_formula, get_r, get_last_price, get_sigma
+from datetime import date, datetime
+
+app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+app.layout = html.Div(
+    [
+        dbc.Row(input_groups),
+        dbc.Row(op_submit_btn),
+        dbc.Row(id="option_price"),
+        dbc.Row(html.Div(dcc.Graph(id="stock_chart"))),
+    ],
+    id="option_pricer",
+    style={"padding": "100px"},
+)
+
+
+@callback(
+    Output(component_id="option_price", component_property="children"),
+    Output(component_id="stock_chart", component_property="figure"),
+    Input(component_id="submit", component_property="n_clicks"),
+    State("op_ticker_input", "value"),
+    State("op_strike_input", "value"),
+    State("op_exp_input", "date"),
+    State("op_type_select", "value"),
+)
+def price_option(n_clicks, ticker, strike, exp_date, option_type):
+    if ctx.triggered_id != "submit":
+        return no_update, no_update
+
+    if None in [ticker, strike, exp_date, option_type]:
+        return "Invalid input!", no_update
+
+    if (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.today()).days <= 0:
+        return "Invalid Date!", no_update
+
+    S = get_last_price(ticker)
+    sigma = get_sigma(ticker)
+    T = (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.today()).days / 365
+    price = bs_formula(S, strike, T, sigma, option_type)
+
+    fig = get_chart(ticker)
+
+    return price, fig
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="localhost", port=5050)
