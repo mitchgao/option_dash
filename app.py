@@ -1,7 +1,7 @@
 import dash
 from dash import Dash, dcc, html, Input, Output, State, callback, ctx, no_update
 import dash_bootstrap_components as dbc
-from components import input_groups, op_submit_btn, get_chart
+from components import input_groups, op_submit_btn, get_chart, get_greeks_plot
 from functions import bs_formula, get_r, get_last_price, get_sigma
 from datetime import date, datetime
 
@@ -13,6 +13,7 @@ app.layout = html.Div(
         dbc.Row(op_submit_btn),
         dbc.Row(id="option_price"),
         dbc.Row(html.Div(dcc.Graph(id="stock_chart"))),
+        dbc.Row(html.Div(dcc.Graph(id="greeks_chart"))),
     ],
     id="option_pricer",
     style={"padding": "100px"},
@@ -22,6 +23,7 @@ app.layout = html.Div(
 @callback(
     Output(component_id="option_price", component_property="children"),
     Output(component_id="stock_chart", component_property="figure"),
+    Output(component_id="greeks_chart", component_property="figure"),
     Input(component_id="submit", component_property="n_clicks"),
     State("op_ticker_input", "value"),
     State("op_strike_input", "value"),
@@ -30,13 +32,13 @@ app.layout = html.Div(
 )
 def price_option(n_clicks, ticker, strike, exp_date, option_type):
     if ctx.triggered_id != "submit":
-        return no_update, no_update
+        return no_update, no_update, no_update
 
     if None in [ticker, strike, exp_date, option_type]:
-        return "Invalid input!", no_update
+        return "Invalid input!", no_update, no_update
 
     if (datetime.strptime(exp_date, "%Y-%m-%d") - datetime.today()).days <= 0:
-        return "Invalid Date!", no_update
+        return "Invalid Date!", no_update, no_update
 
     S = get_last_price(ticker)
     sigma = get_sigma(ticker)
@@ -44,8 +46,9 @@ def price_option(n_clicks, ticker, strike, exp_date, option_type):
     price = bs_formula(S, strike, T, sigma, option_type)
 
     fig = get_chart(ticker)
+    fig_greeks = get_greeks_plot(S, T, sigma, option_type)
 
-    return price, fig
+    return price, fig, fig_greeks
 
 
 if __name__ == "__main__":
