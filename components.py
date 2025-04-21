@@ -4,7 +4,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, date
 from plotly.subplots import make_subplots
-from functions import BSM_Greeks
+from functions import BSM_Greeks, get_vol_matrix
 import numpy as np
 
 op_type_select = dbc.Select(
@@ -86,3 +86,48 @@ input_groups = html.Div(
     ],
     style={"width": "300px"},
 )
+
+
+def get_vol_plot(sym):
+    z_data = get_vol_matrix(sym)
+    z = z_data.values
+
+    # x: strike labels
+    x_strikes = z_data.index.values  # e.g., [150, 160, ..., 250]
+    # y: expiration date labels
+    y_expiries = list(z_data.columns)  # e.g., ['2024-04-19', '2024-04-26', ...]
+
+    # Create meshgrid of x, y for surface plot
+    import numpy as np
+
+    x_mesh, y_mesh = np.meshgrid(x_strikes, range(len(y_expiries)))  # y is row index
+
+    # Plotly surface with custom ticks
+    fig = go.Figure(
+        data=[go.Surface(z=z.T, x=x_strikes, y=list(range(len(y_expiries))))]
+    )
+
+    # Add labels and custom tick text
+    fig.update_layout(
+        title=dict(text="Implied Vol Surface"),
+        autosize=False,
+        width=1500,
+        height=600,
+        margin=dict(l=65, r=50, b=65, t=90),
+        scene=dict(
+            xaxis=dict(
+                title="Strike Price",
+                tickvals=list(x_strikes[::5]),  # every 5th strike
+                ticktext=[str(s) for s in x_strikes[::5]],
+            ),
+            yaxis=dict(
+                title="Expiration Date",
+                tickvals=list(range(len(y_expiries))),  # expiration indices
+                ticktext=y_expiries,  # actual date labels
+            ),
+            zaxis=dict(title="Implied Volatility"),
+            aspectratio=dict(x=1, y=2, z=0.7),
+        ),
+    )
+
+    return fig

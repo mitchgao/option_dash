@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import norm
 from datetime import datetime
 import yfinance as yf
+import pandas as pd
 import math
 
 
@@ -86,3 +87,27 @@ def get_sigma(ticker):
     data = ticker.history(period="3mo")
     sigma = data.Close.apply(lambda x: np.log(x)).diff(1).std() * np.sqrt(252)
     return float(sigma)
+
+
+def get_vol_matrix(sym: str):
+    print("Getting Vols")
+    ticker = yf.Ticker(sym)
+    expirations = ticker.options
+    iv_surface = {}
+    for expiry in expirations:  # Limit to 5 expirations for speed
+        calls = yf.Ticker(sym).option_chain(expiry).calls
+        iv_surface[expiry] = calls.set_index("strike")["impliedVolatility"]
+    # Combine into a DataFrame: rows = strike, columns = expiry
+    iv_df = pd.DataFrame(iv_surface)
+    iv_df = iv_df.sort_index()
+
+    # Interpolate (within range only), fill extrapolated NaNs with nearest known value
+    iv_df_filled = iv_df.interpolate(method="linear", axis=0)
+
+    # Fill remaining NaNs at the top/bottom (extrapolation area) with nearest valid value
+    iv_df_filled = iv_df_filled.fillna(method="bfill")  # Fill downward first
+    iv_df_filled = iv_df_filled.fillna(method="ffill")  # Then fill upward
+
+    last_price = get_last_price(sym)
+
+    return iv_df_filled.query(f"strike<={last_price*1.5} & strike>={last_price*0.5} ")
